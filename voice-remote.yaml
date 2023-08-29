@@ -1,0 +1,250 @@
+substitutions:
+  NODE_NAME: "voice-remote"
+  FRIENDLY_NAME: "Voice Remote"
+  LED_DATA: 'GPIO32'
+  MIC_I2S_LRCLK: 'GPIO19'
+  MIC_I2S_BCLK: 'GPIO18'
+  MIC_DATA: 'GPIO27'
+  MIC_PWR: 'GPIO33'
+  AMP_I2S_LRCLK: 'GPIO12'
+  AMP_I2S_BCLK: 'GPIO14'
+  AMP_DATA: 'GPIO13'
+  AMP_PWR: 'GPIO15'
+  BAT_VSENS: 'GPIO39'
+  BTN: 'GPIO26'
+
+esphome:
+  name: ${NODE_NAME}
+  friendly_name: ${FRIENDLY_NAME}
+  project:
+    name: esp32.voice-remote
+    version: "1.0"
+  min_version: 2023.7.0
+  on_boot:
+    then:
+      - script.execute: sleep_routine
+      - script.execute: wifi_check
+
+esp32:
+  board: esp32dev
+  framework:
+    type: arduino
+
+logger:
+api:
+  encryption:
+    key: <EDITED>
+
+ota:
+  password: <EDITED>
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  manual_ip:
+    static_ip: 192.168.100.246
+    gateway: 192.168.100.1
+    subnet: 255.255.255.0
+
+  ap:
+    ssid: "AP ${NODE_NAME}"
+    password: <EDITED>
+
+captive_portal:
+
+light:
+  - platform: esp32_rmt_led_strip
+    internal: true
+    rgb_order: RGB
+    chipset: WS2812
+    rmt_channel: 0
+    id: neopixel
+    pin: ${LED_DATA}
+    num_leds: 1
+    default_transition_length: 0ms
+    effects:
+      - pulse:
+          transition_length: 300ms
+          update_interval: 300ms
+
+i2s_audio:
+  - id: i2s_mic
+    i2s_lrclk_pin: ${MIC_I2S_LRCLK}
+    i2s_bclk_pin: ${MIC_I2S_BCLK}
+
+  - id: i2s_amp
+    i2s_lrclk_pin: ${AMP_I2S_LRCLK}
+    i2s_bclk_pin: ${AMP_I2S_BCLK}
+
+microphone:
+  - platform: i2s_audio
+    id: feather_microphone
+    adc_type: external 
+    i2s_audio_id: i2s_mic 
+    i2s_din_pin: ${MIC_DATA}
+    pdm: false
+
+speaker: # Media player won't work currently with Piper, have to use speaker component. Media player works with cloud.
+  - platform: i2s_audio
+    id: media_out
+    dac_type: external
+    i2s_audio_id: i2s_amp
+    i2s_dout_pin: ${AMP_DATA}
+    mode: mono
+
+sensor:
+  - platform: adc
+    pin: ${BAT_VSENS}
+    name: "Battery Voltage"
+    update_interval: 20s
+    attenuation: 11db # Required
+    filters:
+     - multiply: 2.0
+     - offset: 0.00 # Trim reading by adjusting this value
+
+output:
+  - platform: gpio
+    pin: ${AMP_PWR}
+    id: Amp_Power
+
+  - platform: gpio
+    pin: ${MIC_PWR}
+    id: Mic_Power
+
+voice_assistant:
+  microphone: feather_microphone
+  speaker: media_out
+  silence_detection: true
+  # on_start:
+  #   # - script.stop: wifi_check #this script just updates the notification LED for wifi status. It's diabled during voice assist so it doesn't interfere with the indicator LED status during VA use
+  #   - light.turn_on: 
+  #       id: neopixel
+  #       color_brightness: 50%
+  #       red: 0%
+  #       green: 100%
+  #       blue: 0%
+  #       effect: pulse
+  #   - output.turn_on: Mic_Power 
+  #   - output.turn_on: Amp_Power
+  on_listening:
+    - light.turn_on: 
+        id: neopixel
+        color_brightness: 50%
+        red: 0%
+        green: 100%
+        blue: 0%
+        effect: pulse
+    - output.turn_on: Mic_Power 
+    - output.turn_on: Amp_Power
+  on_tts_start:
+    - light.turn_on: 
+        id: neopixel
+        color_brightness: 50%
+        red: 0%
+        green: 0%
+        blue: 100%
+        effect: pulse
+  on_tts_end:
+    - light.turn_on: 
+        id: neopixel
+        color_brightness: 50%
+        red: 0%
+        green: 0%
+        blue: 100%
+        effect: pulse
+  on_end:
+    - delay: 100ms
+    - wait_until:
+        not:
+          speaker.is_playing: media_out
+    - light.turn_off: neopixel
+    # - script.execute: wifi_check
+    - output.turn_off: Mic_Power # Power off Mic when not used
+    - output.turn_off: Amp_Power # Uses Amp SD pin to shut off amp when not being used.
+  on_error:
+    - light.turn_on: 
+        id: neopixel
+        color_brightness: 100%
+        red: 100%
+        green: 0%
+        blue: 0%
+        effect: none
+    - delay: 1s
+    - light.turn_off: neopixel #set status LED to blank, to clear VA status and prep for Wifi check
+    # - script.execute: wifi_check
+
+binary_sensor:
+  - platform: status # This sensor just says "Connected" or "Not Connected" in the homeassistant.
+    name: "Voice Remote Status"
+  
+  - platform: homeassistant # This imports the input boolean from the homeassistant to check if there is pending update
+    id: update
+    entity_id: input_boolean.esphome_pending_update
+
+  - platform: gpio
+    pin:
+      number: ${BTN}
+      inverted: False
+    name: Button
+    id: remote_button
+    filters:
+      - delayed_on: 10ms # Debounce time
+
+    on_multi_click:
+      - timing:
+          - ON FOR AT LEAST 350ms
+        then:
+          - voice_assistant.start:
+      - timing:
+          - ON FOR AT LEAST 350ms
+          - OFF FOR AT LEAST 10ms
+        then:
+          - voice_assistant.stop:
+          
+    on_press: 
+      then:
+        - script.stop: sleep_routine # This resets the sleep timer every time the button is pressed
+        - logger.log: "Sleep timer reset."
+        - script.execute: sleep_routine
+
+deep_sleep:
+  id: deep_sleep_1
+  sleep_duration: 1h # how long to sleep before rewaking
+  esp32_ext1_wakeup: #regular GPIO wakeup had some issues on some boards. Ext1 seems to work on everything.
+    pins:
+      - ${BTN}
+    mode: ANY_HIGH
+
+script:
+  - id: sleep_routine
+    then:
+    - logger.log: "Sleep timer started."
+    - delay: 30s  # sleep timeout length, adjust as necessary, longer time = device stays awake longer
+    - if: 
+        condition:
+          binary_sensor.is_on: update
+        then:
+          - logger.log: "There is an update pending. Preventing Deep Sleep."
+        else:
+          - light.turn_off: neopixel
+          - logger.log: "Entering Sleep..."
+          - deep_sleep.enter: deep_sleep_1
+          
+  - id: wifi_check
+    then:
+    - light.turn_on: 
+        id: neopixel
+        color_brightness: 25%
+        red: 80%
+        green: 50%
+        blue: 0%
+    - wait_until:
+       wifi.connected:
+    - light.turn_on: 
+        id: neopixel
+        color_brightness: 25%
+        red: 0%
+        green: 0%
+        blue: 100%
+    - delay: 1s
+    - light.turn_off: neopixel

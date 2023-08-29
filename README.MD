@@ -22,18 +22,20 @@ ___
 - TPS63020 Buck-Boost Converter Module
 - WS2812 Addressable LED
 - A tactile switch that you like (I used B3F-4055)
+- A small speaker of your choice (I used AS02008MR)
 - TP4056 Li-Ion Charging Module
 - A Li-Ion battery (I used one from an old iPhone due to the form factor)
-- Other miscellaneous components
+- Other miscellaneous components like SMD Resistors, Capacitors, etc.
+___
+### Case
+The case can be printed on a 3D printer without using any support, the files are attached in the "Case STL" folder. 
+
+Also [here](https://cad.onshape.com/documents/a099e547f9d236687422ab01/w/ca8a76f6cc6eaf7c9584012f/e/bb01b9a7f8b48ed9828aac3d) is the link to the OnShape project. Anybody can make a copy and edit it if you want to make some changes to the case that will better suit your use-case.
 
 ___
 
 ### TO DO:
 - Design a case adaptation for 18650 Li-Ion battery
 - Remove the strapping pins (12, 15) to please my internal perfectionist and ESPHome code checker.
-- Add Schematic
-- Add BOM
-- Add Gerber
-- Share the link to the case in OnShape
-- Add case STL files
-- Add YAML configuration file for ESPHome
+- Add Links to BOM
+

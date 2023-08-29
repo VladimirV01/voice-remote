@@ -28,12 +28,18 @@ ___
 - Other miscellaneous components like SMD Resistors, Capacitors, etc.
 ___
 ### Case
+![Case](Renders/Case.png "The Case")
 The case can be printed on a 3D printer without using any support, the files are attached in the "Case STL" folder. 
 
 Also [here](https://cad.onshape.com/documents/a099e547f9d236687422ab01/w/ca8a76f6cc6eaf7c9584012f/e/bb01b9a7f8b48ed9828aac3d) is the link to the OnShape project. Anybody can make a copy and edit it if you want to make some changes to the case that will better suit your use-case.
-
 ___
 
+### PCB
+The printed circuit board was designed by me and I manufactured it using JLCPCB services and it turned out amazing. 
+![PCB](Photos/PCB.jpg "Printed Circuit Board")
+And here is it assembled.
+![Assembled PCB](Photos/PCB_Top_View.jpg "Assembled Printed Circuit Board")
+___
 ### TO DO:
 - Design a case adaptation for 18650 Li-Ion battery
 - Remove the strapping pins (12, 15) to please my internal perfectionist and ESPHome code checker.
